@@ -36,21 +36,35 @@ void find (char *path)
 // - - - visits every record in the folder, one per pass, and stops when there are none left. - - - //
 	// The call read(fd, buf, n) reads at most n bytes from the file descriptor fd, copies them into buf, and returns the number of bytes read.
 	while (read(fd, &de, sizeof(de)) == sizeof(de)) {
-		printf("inode %d name %s\n", de.inum, de.name);
+		printf("inode %d name %s\n", de.inum, de.name); // shows what loop is reading
+														// name and inode numbers need to match 3rd column of 'ls' command
+														// SKIP: '.' '..' and empty slots (full of zeros)
 	}	 
+
+// TEST mkdir COMMAND
+// mkdir a; mkdir a/b; echo > a/b/x.c; echo > a/y.c
+//		echo > a/y.c creates an empty file. 
+//		echo with nothing after it prints nothing, and > sends that nothing into a new file called a/y.c.
+//
+// 		Check with:
+//				ls
+//				ls a/b
+//
+// 		Then run fprint statements
 
 // < < < WHILE LOOP PSEUDOCODE > > > //
 /* 	
-Skip empty slots (inode number 0), . and ...
+	1. Skip empty slots (inode number 0), . and ...
 
-Build the entry’s full path, such as a/b.
+	2. Build the entry’s full path, such as a/b.
 
-Call stat on that path to learn its type.
+	3. Call stat on that path to learn its type.
 
-If the name matches the pattern and passes the -type filter, print the path.
+	4. If the name matches the pattern and passes the -type filter, print the path.
 
-If it’s a folder, call find on that path.
+	5. If it’s a folder, call find on that path.
 
+After the loop: close(fd)
 ---- Two things around the loop need attention as well: ----
 
 Only run the loop for folders. Use st.type to check, so a file like README never gets read as records.

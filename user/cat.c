@@ -37,6 +37,16 @@ main(int argc, char *argv[])
     if ((fd = open(argv[i], O_RDONLY)) < 0) {
       fprintf(2, "cat: cannot open %s\n", argv[i]);
       exit(1);
+	// Q: What is the difference between fprintf and printf.c in the xv6/user folder?
+	// A: 
+	/* 
+		Both functions do the same formatting; they differ only in where the text goes. In printf.c, both just call vprintf:
+
+		printf(...) always passes file descriptor 1, which is standard output.
+		fprintf(fd, ...) lets you choose the file descriptor.
+	*/
+	// use printf for normal output
+	// fprintf for error and usage messages
     }
     cat(fd);
     close(fd);

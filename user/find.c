@@ -14,33 +14,50 @@ void find (char *path)
 	struct dirent de; // de - directory entry
 	struct stat st; // st - stat : a file details and type 
 
-	if ((fd = open(path, O_RDONLY)) < 0) {
+// - - - returns error if path cannot be opened - - - //
+	// sets file descriptor to path
+	fd = open(path, O_RDONLY); // O_RDONLY -> instructs open to open file for reading
+						       // int open(char *file, int flags)
+							   // Open a file; flags indicate read/write; returns an fd (file descriptor).	
+	if (fd < 0){
     	fprintf(2, "find: cannot open %s\n", path);
     	return;
 	}
 
-	if (fstat(fd, &st) < 0) {
+// - - - returns error if stat cannot be used on file descriptor - - - //
+	// checks if stat can be used on file descriptor
+	int stat_error = fstat(fd, &st);
+	if (stat_error < 0) { 
 		fprintf(2, "find: cannot stat %s\n", path);
 		close(fd);
 		return;
 	}
 
+// - - - visits every record in the folder, one per pass, and stops when there are none left. - - - //
 	// The call read(fd, buf, n) reads at most n bytes from the file descriptor fd, copies them into buf, and returns the number of bytes read.
 	while (read(fd, &de, sizeof(de)) == sizeof(de)) {
 		printf("inode %d name %s\n", de.inum, de.name);
 	}	 
-	
+
+// < < < WHILE LOOP PSEUDOCODE > > > //
+/* 	
+Skip empty slots (inode number 0), . and ...
+
+Build the entry’s full path, such as a/b.
+
+Call stat on that path to learn its type.
+
+If the name matches the pattern and passes the -type filter, print the path.
+
+If it’s a folder, call find on that path.
+
+---- Two things around the loop need attention as well: ----
+
+Only run the loop for folders. Use st.type to check, so a file like README never gets read as records.
+Close fd after the loop. Right now find returns without closing it. Each call to find opens one file descriptor, and a process gets only 16, three of which are already taken. Without close, find would fail after visiting about 13 folders in total, not just 13 levels deep.
+*/
 
 
-
-
-
-
-// while for loop -> go to index, 0, 1, 2, 3, etc
-	// create match index
-	// if (filename == pattern) -> adds to match index
-	// if (type == directory) -> enter, reset index A to 0; store current position in index B.
-		// so two for loops?
 }
 
 // find <dir> <pattern> [-type f|d] searches <dir> recursively and prints the path of every entry whose name matches <pattern>, one path per line. 

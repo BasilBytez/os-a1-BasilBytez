@@ -18,11 +18,10 @@ sleep(int time)
 int main(int argc, char *argv[])
 {
 	// // When you type cat README notes, the shell sets argc to 3, argv[0] to "cat", argv[1] to "README" and argv[2] to "notes".
-	if(argc != 1 || argv[1] == '-'){
+	if(argc != 1 || argv[1] < 0) {
 		fprint("print usage: sleep <ticks>");
 		exit(1);
 	}		
-	argv[1] - '0';
 	pause(argv[1]);
 	exit(0);
 }

@@ -5,6 +5,7 @@
 #include "kernel/fcntl.h"
 
 char *
+// adjusts spacing in output - not relevant to find.c
 fmtname(char *path)
 {
   static char buf[DIRSIZ + 1];
@@ -28,9 +29,9 @@ void
 ls(char *path)
 {
   char buf[512], *p;
-  int fd;
-  struct dirent de;
-  struct stat st;
+  int fd; // fd - file descriptor - int representing kernel managed object that a process may read from or write to
+  struct dirent de; // de - directory entry
+  struct stat st; // st - stat : a file details and type 
 
   if ((fd = open(path, O_RDONLY)) < 0) {
     fprintf(2, "ls: cannot open %s\n", path);

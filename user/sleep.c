@@ -9,19 +9,17 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-void
-sleep(int time)
-{
-
-}
 
 int main(int argc, char *argv[])
 {
 	// // When you type cat README notes, the shell sets argc to 3, argv[0] to "cat", argv[1] to "README" and argv[2] to "notes".
-	if(argc != 1 || argv[1] < 0) {
-		fprint("print usage: sleep <ticks>");
+	if(argc != 1 || atoi(argv[1]) < 0) {
+		printf("print usage: sleep <ticks>");
 		exit(1);
-	}		
-	pause(argv[1]);
+	}
+	// atoi converts char values to int, per '/user/ulib.c'	
+	// int time = argv[1] - '0';	
+	int time = atoi(argv[1]);
+	pause(time);
 	exit(0);
 }

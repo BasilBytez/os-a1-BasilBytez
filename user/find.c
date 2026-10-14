@@ -4,8 +4,21 @@
 #include "kernel/fs.h"
 #include "kernel/fcntl.h"
 
-// The call read(fd, buf, n) reads at most n bytes from the file descriptor
 
+// Returns 1 if every byte of the record is zero (an empty slot), else 0.
+int
+all_zero(struct dirent *d)
+{
+  char *bytes = (char *)d;            // look at the record as raw bytes
+  for (int i = 0; i < sizeof(*d); i++) {
+    if (bytes[i] != 0)
+      return 0;                       // found a non-zero byte: not empty
+  }
+  return 1;                           // all 16 bytes were zero
+}
+
+
+// The call read(fd, buf, n) reads at most n bytes from the file descriptor
 // Write the matcher as a small recursive function and test it on its own.
 void find (char *path)
 {
@@ -35,8 +48,37 @@ void find (char *path)
 
 // - - - visits every record in the folder, one per pass, and stops when there are none left. - - - //
 	// The call read(fd, buf, n) reads at most n bytes from the file descriptor fd, copies them into buf, and returns the number of bytes read.
+	
+	// de.inum -> holds record of inode data	
+	
 	while (read(fd, &de, sizeof(de)) == sizeof(de)) {
+		// skips empty slots (inode number 0),
+		
+		if (all_zero(&de))
+			continue;                         // empty slot: go to the next record
 
+/*  -------- TO IMPLEMENT: TYPE CHECKING INSIDE OF SWITCH STATEMENT -------
+		// checks TYPE.  If directory skips
+		switch (st.type) {
+			case T_DEVICE:
+			
+			case T_FILE:
+			
+			case T_DIR:
+				// need to print THEN search recursively
+		}
+*/		
+		bool empty = true;
+		for(int i = 0; i < 16; i++){
+			if(read(fd[i] != 0)) empty = false; 
+			break;
+		}
+		
+
+		// skips empty slots '.'
+ 		
+		// skips empty slots '..' 
+		if (empty == false);
 		printf("inode\tname\n");                 // once, before the loop
 		printf("%d\t[%s]\n", de.inum, de.name);  // inside the loop
 												 // name and inode numbers need to match 3rd column of 'ls' command

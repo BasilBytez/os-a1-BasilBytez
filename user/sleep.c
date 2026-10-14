@@ -13,7 +13,7 @@
 int main(int argc, char *argv[])
 {
 	// // When you type cat README notes, the shell sets argc to 3, argv[0] to "cat", argv[1] to "README" and argv[2] to "notes".
-	if(argc != 1 || atoi(argv[1]) < 0) {
+	if(argc != 2 || atoi(argv[1]) < 0) {
 		printf("print usage: sleep <ticks>");
 		exit(1);
 	}

@@ -36,7 +36,11 @@ void find (char *path)
 // - - - visits every record in the folder, one per pass, and stops when there are none left. - - - //
 	// The call read(fd, buf, n) reads at most n bytes from the file descriptor fd, copies them into buf, and returns the number of bytes read.
 	while (read(fd, &de, sizeof(de)) == sizeof(de)) {
-		printf("inode %d name %s\n", de.inum, de.name); // shows what loop is reading
+
+		printf("inode\tname\n");                  // once, before the loop
+		printf("%d\t[%s]\n", de.inum, de.name);  // inside the loop
+
+//		printf("inode %d name %s\n", de.inum, de.name); // shows what loop is reading
 														// name and inode numbers need to match 3rd column of 'ls' command
 														// SKIP: '.' '..' and empty slots (full of zeros)
 	}	 

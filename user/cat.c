@@ -5,6 +5,7 @@
 char buf[512];
 
 void
+// fd == file descriptor -> see pg 11 of xv6 manual
 cat(int fd)
 {
   int n;
@@ -21,6 +22,7 @@ cat(int fd)
   }
 }
 
+// When you type cat README notes, the shell sets argc to 3, argv[0] to "cat", argv[1] to "README" and argv[2] to "notes".
 int
 main(int argc, char *argv[])
 {

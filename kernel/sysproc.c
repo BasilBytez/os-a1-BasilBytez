@@ -6,6 +6,31 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "vm.h"
+#include "sysinfo.h"
+
+// sysinfo(struct sysinfo *info): fill in a struct sysinfo and copy it
+// out to the user's address. returns 0, or -1 if the copy fails
+uint64
+sys_sysinfo(void)
+{
+  uint64 user_addr;         // where the user wants the struct written
+  struct sysinfo info;      // our copy, here in kernel memory
+  struct proc *p = myproc();
+
+  argaddr(0, &user_addr);   // first argument = the user's pointer
+
+  info.freemem = count_freemem();
+  info.nproc = count_processes();
+  info.nopenfile = count_openfiles();
+
+  // copyout in this xv6 takes 5 args: page table, the process size
+  // (p->sz), the user address, the kernel data, and how many bytes.
+  // it fails (returns -1) if the user address is bad
+  if (copyout(p->pagetable, p->sz, user_addr, (char *)&info, sizeof(info)) < 0)
+    return -1;
+
+  return 0;
+}
 
 // trace(int mask): trace the syscalls whose bits are set in mask.
 // the mask lives in struct proc, so kfork copies it to children

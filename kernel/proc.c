@@ -705,3 +705,21 @@ procdump(void)
     printk("\n");
   }
 }
+
+// count processes whose state isn't UNUSED (for sysinfo)
+uint64
+count_processes(void)
+{
+  struct proc *p;
+  uint64 count = 0;
+
+  for (p = proc; p < &proc[NPROC]; p++) {
+    // p->state is protected by p->lock, so hold it while we look
+    acquire(&p->lock);
+    if (p->state != UNUSED)
+      count = count + 1;
+    release(&p->lock);
+  }
+
+  return count;
+}

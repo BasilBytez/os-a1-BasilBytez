@@ -80,3 +80,19 @@ kalloc(void)
     memset((char *)r, 5, PGSIZE); // fill with junk
   return (void *)r;
 }
+
+// count free pages and return how many bytes that is (for sysinfo)
+uint64
+count_freemem(void)
+{
+  struct run *r;
+  uint64 free_pages = 0;
+
+  // hold kmem.lock so no other CPU changes the free list while we walk it
+  acquire(&kmem.lock);
+  for (r = kmem.freelist; r != 0; r = r->next)
+    free_pages = free_pages + 1;
+  release(&kmem.lock);
+
+  return free_pages * PGSIZE;   // each page is PGSIZE (4096) bytes
+}

@@ -177,3 +177,21 @@ filewrite(struct file *f, uint64 addr, int n)
 
   return ret;
 }
+
+// count file-table entries that are in use (for sysinfo)
+uint64
+count_openfiles(void)
+{
+  struct file *f;
+  uint64 count = 0;
+
+  // hold ftable.lock so nobody opens or closes a file while we count
+  acquire(&ftable.lock);
+  for (f = ftable.file; f < ftable.file + NFILE; f++) {
+    if (f->ref > 0)
+      count = count + 1;
+  }
+  release(&ftable.lock);
+
+  return count;
+}

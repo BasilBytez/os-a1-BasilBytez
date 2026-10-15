@@ -1,11 +1,5 @@
 // find.c - search a directory tree for names that match a pattern
 // usage: find <dir> <pattern> [-type f|d]
-//
-// progress:
-//   part 1 - arg checking + listing one dir        (done)
-//   part 2 - walk every subdir with a to-do list   (done)
-//   part 3 - only print names that match           (this version)
-//   part 4 - -type f / -type d filter              (todo)
 
 #include "kernel/types.h"   // uint etc, has to come first
 #include "kernel/stat.h"    // struct stat, T_DIR / T_FILE / T_DEVICE
@@ -92,6 +86,19 @@ match(char *pat, char *name)
   return 0;
 }
 
+// should an entry of this type get printed? returns 1 or 0
+// -type f counts devices (like console) as files, -type d is just dirs,
+// and with no -type everything counts
+int
+type_wanted(short type)
+{
+  if (type_filter == 'f')
+    return type == T_FILE || type == T_DEVICE;
+  if (type_filter == 'd')
+    return type == T_DIR;
+  return 1;   // no -type given
+}
+
 // add a dir's path to the end of the to-do list.
 // the list owns the path after this, find() frees it once it's searched
 void
@@ -162,8 +169,8 @@ search_folder(char *path)
     }
 
     // print it if the name matches (just the name, not the whole path)
-    // TODO part 4: check -type here too
-    if (match(pattern, name))
+    // and it's a type we want
+    if (match(pattern, name) && type_wanted(child_st.type))
       printf("%s\n", child);
 
     // dirs go on the to-do list even if their name didn't match,

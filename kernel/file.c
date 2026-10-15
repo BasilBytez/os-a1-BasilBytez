@@ -177,3 +177,26 @@ filewrite(struct file *f, uint64 addr, int n)
 
   return ret;
 }
+
+uint64
+count_openfiles(void)
+{
+  struct file *f;
+  uint64 open_files = 0;
+
+  // We must hold the ftable.lock while reading the file table.
+  acquire(&ftable.lock);
+
+  // Iterate through the global file table. NFILE is the maximum open files.
+  for (f = ftable.file; f < &ftable.file[NFILE]; f++) {
+    // A reference count greater than 0 means the file is currently open.
+    if (f->ref > 0) {
+      open_files = open_files + 1;
+    }
+  }
+
+  // Release the lock after we finish reading.
+  release(&ftable.lock);
+
+  return open_files;
+}

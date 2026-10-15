@@ -80,32 +80,3 @@ kalloc(void)
     memset((char *)r, 5, PGSIZE); // fill with junk
   return (void *)r;
 }
-
-uint64
-count_freemem(void)
-{
-  struct run *r;
-  uint64 free_pages = 0;
-
-  // thou must hold the kmem.lock while walking the free list to prevent
-  // another CPU from allocating or freeing memory while we count.
-  acquire(&kmem.lock);
-
-  // Start at the head of the free list.
-  r = kmem.freelist;
-  
-  // Traverse the linked list until we reach the end (a null pointer).
-  while (r != 0) {
-    free_pages = free_pages + 1;
-    r = r->next;
-  }
-
-  // Release the lock immediately after we finish reading the shared list.
-  release(&kmem.lock);
-
-  // Convert the number of free pages into total free bytes.
-  // In xv6, each physical page is 4096 bytes (PGSIZE).
-  uint64 total_free_bytes = free_pages * 4096;
-  
-  return total_free_bytes;
-}

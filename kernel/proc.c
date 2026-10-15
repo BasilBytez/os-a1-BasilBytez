@@ -701,20 +701,3 @@ procdump(void)
     printk("\n");
   }
 }
-
-uint64
-count_processes(void)
-{
-  struct proc *p;
-  uint64 active_processes = 0;
-
-  // Iterate through the entire process table. NPROC is the max number of processes.
-  for (p = proc; p < &proc[NPROC]; p++) {
-    // If the process state is anything other than UNUSED, it counts as an active process.
-    if (p->state != UNUSED) {
-      active_processes = active_processes + 1;
-    }
-  }
-
-  return active_processes;
-}

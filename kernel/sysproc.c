@@ -7,36 +7,6 @@
 #include "proc.h"
 #include "vm.h"
 
-#include "sysinfo.h"
-
-// Add this function to handle the system call.
-uint64
-sys_sysinfo(void)
-{
-  uint64 user_info_addr;
-  struct sysinfo local_info;
-  struct proc *p = myproc(); // Get the current process[cite: 2]
-
-  // Retrieve the first argument passed to the system call, which is the 
-  // user-space address where we need to copy the struct[cite: 1].
-  argaddr(0, &user_info_addr);
-
-  // Call our helper functions to populate the local struct.
-  local_info.freemem = count_freemem();
-  local_info.nproc = count_processes();
-  local_info.nopenfile = count_openfiles();
-
-  // Use copyout to safely move data from kernel memory to user memory[cite: 1].
-  // copyout takes: (process page table, destination address, source address, size)
-  if (copyout(p->pagetable, user_info_addr, (char *)&local_info, sizeof(local_info)) < 0) {
-    // If the copy fails (e.g., invalid user address), return -1[cite: 1].
-    return -1;
-  }
-
-  // Return 0 on success[cite: 1].
-  return 0;
-}
-
 uint64
 sys_exit(void)
 {

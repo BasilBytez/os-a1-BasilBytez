@@ -167,6 +167,7 @@ freeproc(struct proc *p)
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
+  p->trace_mask = 0;   // don't let the next process in this slot inherit it
   p->state = UNUSED;
 }
 
@@ -288,6 +289,9 @@ kfork(void)
   np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
+
+  // child gets the same trace mask as the parent
+  np->trace_mask = p->trace_mask;
 
   pid = np->pid;
 

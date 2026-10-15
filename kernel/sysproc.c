@@ -7,6 +7,18 @@
 #include "proc.h"
 #include "vm.h"
 
+// trace(int mask): trace the syscalls whose bits are set in mask.
+// the mask lives in struct proc, so kfork copies it to children
+// and exec leaves it alone
+uint64
+sys_trace(void)
+{
+  int mask;
+  argint(0, &mask);
+  myproc()->trace_mask = mask;
+  return 0;
+}
+
 uint64
 sys_exit(void)
 {

@@ -153,6 +153,7 @@ UPROGS=\
 	$U/_sleep\
 	$U/_find\
 	$U/_xargs\
+	$U/_trace\
 	$U/_mkdeep\
 	$U/_status\
 

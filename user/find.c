@@ -3,9 +3,9 @@
 // Usage: find <dir> <pattern> [-type f|d]
 //
 // We're building this in segments:
-//   Segment 1 (this version): check the arguments, then print the
-//                             full path of every entry in ONE folder.
-//   Segment 2: also search every folder below it.
+//   Segment 1: check the arguments, then print the full path of
+//              every entry in ONE folder.
+//   Segment 2 (this version): also search every folder below it.
 //   Segment 3: only print names that match the pattern.
 //   Segment 4: the -type f / -type d filter.
 
@@ -21,6 +21,19 @@
 // =====================================================================
 char *pattern;          // the name pattern to look for, e.g. "*.c"
 char type_filter = 0;   // 0 = no -type given, 'f' = files only, 'd' = folders only
+
+// =====================================================================
+// The to-do list: folders we still need to search.
+// New folders are added at the end, and we work through the list from
+// the front, one folder at a time. Because nothing calls itself, the
+// search can go as deep as needed without running out of stack.
+// xv6's disk holds fewer than 200 files and folders in total, so a
+// list of 200 is always big enough.
+// =====================================================================
+#define MAX_FOLDERS 200
+char *todo[MAX_FOLDERS];   // the folder paths (each one made with malloc)
+int todo_count = 0;        // how many folders have been added so far
+int todo_next = 0;         // position of the next folder to search
 
 // =====================================================================
 // usage: print how to run find, then quit with exit status 1.
@@ -68,8 +81,26 @@ make_path(char *dir, char *name)
 }
 
 // =====================================================================
+// add_folder: put a folder's path at the end of the to-do list.
+// The list takes over the path: find() frees it after searching it.
+// =====================================================================
+void
+add_folder(char *path)
+{
+  if (todo_count == MAX_FOLDERS) {
+    // Can't happen on xv6's disk, but never write past the list's end.
+    fprintf(2, "find: too many folders, skipping %s\n", path);
+    free(path);
+    return;
+  }
+  todo[todo_count] = path;
+  todo_count = todo_count + 1;
+}
+
+// =====================================================================
 // search_folder: look at every entry directly inside one folder.
-// (Segment 1: just print each entry's full path.)
+// (Segment 2: print each entry's full path, and put subfolders on
+// the to-do list so they get searched later.)
 // =====================================================================
 void
 search_folder(char *path)
@@ -119,15 +150,59 @@ search_folder(char *path)
     // Build the entry's full path, e.g. "a" + "y.c" -> "a/y.c"
     char *child = make_path(path, name);
 
-    // SEGMENT 1 TEST: print every entry. (Later segments change this.)
+    // Find out what kind of entry it is: file, folder or device.
+    // The record itself doesn't say, so we ask stat().
+    struct stat child_st;
+    if (stat(child, &child_st) < 0) {
+      fprintf(2, "find: cannot stat %s\n", child);
+      free(child);
+      continue;
+    }
+
+    // SEGMENT 2 TEST: print every entry. (Segments 3 and 4 add checks.)
     printf("%s\n", child);
 
-    // Done with this path, so give its memory back.
-    free(child);
+    // A folder goes on the to-do list to be searched later. The list
+    // now owns `child`, so we must NOT free it here.
+    // Anything else is finished, so free its path now.
+    if (child_st.type == T_DIR)
+      add_folder(child);
+    else
+      free(child);
   }
 
   // --- 4. Done with this folder ---
   close(fd);
+}
+
+// =====================================================================
+// find: search the starting folder and every folder below it.
+// =====================================================================
+void
+find(char *start)
+{
+  // Put a copy of the starting folder on the list. Every path on the
+  // list gets freed when we're done with it, so it must come from
+  // malloc, not straight from argv.
+  char *first = malloc(strlen(start) + 1);
+  if (first == 0) {
+    fprintf(2, "find: out of memory\n");
+    exit(1);
+  }
+  strcpy(first, start);
+  add_folder(first);
+
+  // Work through the list from the front. search_folder() adds new
+  // folders to the end as it finds them, so this loop keeps going
+  // until every folder that was ever added has been searched.
+  while (todo_next < todo_count) {
+    char *folder = todo[todo_next];   // the next folder to search
+    todo_next = todo_next + 1;        // move our place in the list along
+
+    search_folder(folder);
+
+    free(folder);                     // finished with this folder's path
+  }
 }
 
 // =====================================================================
@@ -167,145 +242,6 @@ main(int argc, char *argv[])
   close(fd);   // we only opened it to check; search_folder opens it again
 
   // --- 5. Search ---
-  search_folder(argv[1]);   // Segment 2 changes this line
+  find(argv[1]);
   exit(0);
 }
-
-/*
-#include "kernel/types.h"
-#include "kernel/stat.h"
-#include "user/user.h"
-#include "kernel/fs.h"
-#include "kernel/fcntl.h"
-
-
-// Returns 1 if every byte of the record is zero (an empty slot), else 0.
-int
-all_zero(struct dirent *d)
-{
-  char *bytes = (char *)d;            // look at the record as raw bytes
-  for (int i = 0; i < sizeof(*d); i++) {
-    if (bytes[i] != 0)
-      return 0;                       // found a non-zero byte: not empty
-  }
-  return 1;                           // all 16 bytes were zero
-}
-
-
-// The call read(fd, buf, n) reads at most n bytes from the file descriptor
-// Write the matcher as a small recursive function and test it on its own.
-void find (char *path)
-{
-//	char buf[512], *p;
-	int fd; // fd - file descriptor - int representing kernel managed object that a process may read from or write to
-	struct dirent de; // de - directory entry
-	struct stat st; // st - stat : a file details and type 
-
-// - - - returns error if path cannot be opened - - - //
-	// sets file descriptor to path
-	fd = open(path, O_RDONLY); // O_RDONLY -> instructs open to open file for reading
-						       // int open(char *file, int flags)
-							   // Open a file; flags indicate read/write; returns an fd (file descriptor).	
-	if (fd < 0){
-    	fprintf(2, "find: cannot open %s\n", path);
-    	return;
-	}
-
-// - - - returns error if stat cannot be used on file descriptor - - - //
-	// checks if stat can be used on file descriptor
-	int stat_error = fstat(fd, &st);
-	if (stat_error < 0) { 
-		fprintf(2, "find: cannot stat %s\n", path);
-		close(fd);
-		return;
-	}
-
-// - - - visits every record in the folder, one per pass, and stops when there are none left. - - - //
-	// The call read(fd, buf, n) reads at most n bytes from the file descriptor fd, copies them into buf, and returns the number of bytes read.
-	
-	// de.inum -> holds record of inode data	
-	
-	while (read(fd, &de, sizeof(de)) == sizeof(de)) {
-		// skips empty slots (inode number 0),
-		
-		if (all_zero(&de))
-			continue;                         // empty slot: go to the next record
-
-//  -------- TO IMPLEMENT: TYPE CHECKING INSIDE OF SWITCH STATEMENT -------
-//		// checks TYPE.  If directory skips
-//		switch (st.type) {
-//			case T_DEVICE:
-//			
-//			case T_FILE:
-//			
-//			case T_DIR:
-//				// need to print THEN search recursively
-//		}
-//		
-//		bool empty = true;
-		for(int i = 0; i < 16; i++){
-			if(read(fd[i] != 0)) empty = false; 
-			break;
-		}
-		
-
-		// skips empty slots '.'
- 		
-		// skips empty slots '..' 
-		if (empty == false);
-		printf("inode\tname\n");                 // once, before the loop
-		printf("%d\t[%s]\n", de.inum, de.name);  // inside the loop
-												 // name and inode numbers need to match 3rd column of 'ls' command
-												 // SKIP: '.' '..' and empty slots (full of zeros)
-			
-	}	 
-
-// TEST mkdir COMMAND
-// mkdir a; mkdir a/b; echo > a/b/x.c; echo > a/y.c
-//		echo > a/y.c creates an empty file. 
-//		echo with nothing after it prints nothing, and > sends that nothing into a new file called a/y.c.
-//
-// 		Check with:
-//				ls
-//				ls a/b
-//
-// 		Then run fprint statements
-
-// < < < WHILE LOOP PSEUDOCODE > > > //
-	1. Skip empty slots (inode number 0), . and ...
-
-	2. Build the entry’s full path, such as a/b.
-
-	3. Call stat on that path to learn its type.
-
-	4. If the name matches the pattern and passes the -type filter, print the path.
-
-	5. If it’s a folder, call find on that path.
-
-After the loop: close(fd)
----- Two things around the loop need attention as well: ----
-
-Only run the loop for folders. Use st.type to check, so a file like README never gets read as records.
-Close fd after the loop. Right now find returns without closing it. Each call to find opens one file descriptor, and a process gets only 16, three of which are already taken. Without close, find would fail after visiting about 13 folders in total, not just 13 levels deep.
-
-
-}
-
-// find <dir> <pattern> [-type f|d] searches <dir> recursively and prints the path of every entry whose name matches <pattern>, one path per line. 
-
-int
-main (int argc, char *argv[])
-{
-	int i;
-
-	// find <dir> <pattern> [-type f|d]	
-	if (argc > 4 || argc < 3){
-		printf("usage: find <dir> <pattern> [-type f|d]");
-		exit(1);
-	}
-	// may need to adjust for loop conditions
-	for (i = 0; i < argc; i++)
-		find(argv[i]);
-	exit(0);
-}
-*/

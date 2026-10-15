@@ -32,6 +32,19 @@ sys_sysinfo(void)
   return 0;
 }
 
+// getprocs(struct uproc *buf, int max): the real work is in getprocs()
+// in proc.c, since that's where the process table and wait_lock live
+uint64
+sys_getprocs(void)
+{
+  uint64 buf;
+  int max;
+
+  argaddr(0, &buf);
+  argint(1, &max);
+  return getprocs(buf, max);
+}
+
 // trace(int mask): trace the syscalls whose bits are set in mask.
 // the mask lives in struct proc, so kfork copies it to children
 // and exec leaves it alone

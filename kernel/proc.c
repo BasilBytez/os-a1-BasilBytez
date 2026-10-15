@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "uproc.h"
 
 struct cpu cpus[NCPU];
 
@@ -719,6 +720,58 @@ count_processes(void)
     if (p->state != UNUSED)
       count = count + 1;
     release(&p->lock);
+  }
+
+  return count;
+}
+
+// getprocs: copy one struct uproc for each process that's in use into the
+// user array at addr, in table order, stopping after max of them.
+// returns how many it copied, or -1 if max < 0 or a copy fails.
+// lives here in proc.c because proc[] and wait_lock are only visible here
+int
+getprocs(uint64 addr, int max)
+{
+  struct proc *me = myproc();   // the process asking (where we copy to)
+  struct proc *p;
+  struct uproc u;               // just ONE entry on the kernel stack
+  int count = 0;
+
+  if (max < 0)
+    return -1;
+
+  for (p = proc; p < &proc[NPROC] && count < max; p++) {
+    // p->parent needs wait_lock, and wait_lock always comes before
+    // p->lock (same order kexit and kwait use, so no deadlock)
+    acquire(&wait_lock);
+    acquire(&p->lock);
+
+    if (p->state == UNUSED) {
+      release(&p->lock);
+      release(&wait_lock);
+      continue;
+    }
+
+    // copy the fields into our local struct while the locks are held
+    u.pid = p->pid;
+    if (p->parent != 0)
+      u.ppid = p->parent->pid;
+    else
+      u.ppid = 0;
+    u.state = p->state;
+    u.sz = p->sz;
+    safestrcpy(u.name, p->name, sizeof(u.name));
+
+    // let go of the locks BEFORE copyout
+    release(&p->lock);
+    release(&wait_lock);
+
+    // copy this one entry into the user's array, at position count
+    uint64 dst = addr + count * sizeof(struct uproc);
+    if (copyout(me->pagetable, me->sz, dst, (char *)&u, sizeof(u)) < 0)
+      return -1;
+
+    count = count + 1;
   }
 
   return count;
